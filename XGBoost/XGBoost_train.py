@@ -72,8 +72,8 @@ test_data['protocol_type'] = test_data['protocol_type'].astype('int')
 test_data['service'] = test_data['service'].astype('int')
 test_data['flag'] = test_data['flag'].astype('int')
 
-print(train_data.head())
-print(test_data.head())
+# print(train_data.head())
+# print(test_data.head())
 
 # input and output features
 X_train = train_data.drop('label', axis=1)
@@ -81,43 +81,67 @@ y_train = train_data['label']
 X_test = test_data.drop('label', axis=1)
 y_test = test_data['label']
 
+# print the number of normals and attacks in the training data
+print('Number of normals in the training data: ', y_train[y_train == 0].count())
+print('Number of attacks in the training data: ', y_train[y_train == 1].count())
+
+
 # create an XGBoost model
 import xgboost as xgb
+from sklearn.model_selection import GridSearchCV
 
-# create a DMatrix for XGBoost
-dtrain = xgb.DMatrix(X_train, label=y_train)
-dtest = xgb.DMatrix(X_test, label=y_test)
-
-# define the parameters for the model
-param = {
-    'max_depth': 3,
-    'eta': 0.3,
-    'objective': 'binary:logistic',
-    'eval_metric': 'auc'
+xgbModel = xgb.XGBClassifier()
+optimization_dict = {
+    'max_depth': [2, 4, 6],
+    'n_estimators': [50, 100, 200], 
+    'eta': [0.01, 0.03, 0.05],
+    'subsample': [0.5, 0.7, 1.0],
+    'colsample_bytree': [0.5, 0.7, 1.0],
+    'min_child_weight': [1, 3, 5],
+    'max_depth': [2, 4, 6],
+    'gamma': [0.0, 0.1, 0.2]
 }
+model = GridSearchCV(xgbModel, optimization_dict, scoring='accuracy', verbose=1)
+model.fit(X_train, y_train)
 
-# number of training iterations
-num_round = 15
+print(model.best_score_)
+print(model.best_params_)
 
-# train the model
-bst = xgb.train(param, dtrain, num_round)
+# # create a DMatrix for XGBoost
+# dtrain = xgb.DMatrix(X_train, label=y_train)
+# dtest = xgb.DMatrix(X_test, label=y_test)
 
-# make predictions for test data
-preds = bst.predict(dtest)
+# # define the parameters for the model
+# param = {
+#     'max_depth': 3,
+#     'eta': 0.05,
+#     'objective': 'binary:logistic',
+#     'eval_metric': 'auc',
+#     'tree_method': 'hist'
+# }
 
-# evaluate predictions
-from sklearn.metrics import accuracy_score
+# # number of training iterations
+# num_round = 100
 
-# round predictions
-rounded_preds = [round(value) for value in preds]
+# # train the model
+# bst = xgb.train(param, dtrain, num_round)
 
-# calculate accuracy
-accuracy = accuracy_score(y_test, rounded_preds)
-print("Accuracy: %.2f%%" % (accuracy * 100.0))
+# # make predictions for test data
+# preds = bst.predict(dtest)
 
-# save the model
-import pickle
+# # evaluate predictions
+# from sklearn.metrics import accuracy_score
 
-# save the model to disk
-filename = 'finalized_model.sav'
-pickle.dump(bst, open(filename, 'wb'))
+# # round predictions
+# rounded_preds = [round(value) for value in preds]
+
+# # calculate accuracy
+# accuracy = accuracy_score(y_test, rounded_preds)
+# print("Accuracy: %.2f%%" % (accuracy * 100.0))
+
+# # save the model
+# import pickle
+
+# # save the model to disk
+# filename = 'finalized_model.sav'
+# pickle.dump(bst, open(filename, 'wb'))
